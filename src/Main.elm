@@ -5,6 +5,8 @@ import Html.Attributes exposing (..)
 import Html.Events exposing (..)
 import Navigation
 import LeaderBoard
+import Runner
+import Login
 
 
 -- model
@@ -13,12 +15,16 @@ import LeaderBoard
 type alias Model =
     { page : Page
     , leaderBoard : LeaderBoard.Model
+    , login : Login.Model
+    , runner : Runner.Model
     }
 
 
 type Page
     = NotFound
     | LeaderBoardPage
+    | RunnerPage
+    | LoginPage
 
 
 init : Navigation.Location -> ( Model, Cmd Msg )
@@ -30,14 +36,23 @@ init location =
         ( leaderboardInitModel, leaderboardCmd ) =
             LeaderBoard.init
 
+        ( runnerInitModel, runnerCmd ) =
+            Runner.init
+
+        ( loginInitModel, loginCmd ) =
+            Login.init
+
         initModel =
             { page = page
             , leaderBoard = leaderboardInitModel
+            , login = loginInitModel
+            , runner = runnerInitModel
             }
 
         cmds =
             Cmd.batch
                 [ Cmd.map LeaderBoardMsg leaderboardCmd
+                , Cmd.map RunnerMsg runnerCmd
                 ]
     in
         ( initModel, cmds )
@@ -51,6 +66,8 @@ type Msg
     = Navigate Page
     | ChangePage Page
     | LeaderBoardMsg LeaderBoard.Msg
+    | RunnerMsg Runner.Msg
+    | LoginMsg Login.Msg
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -71,6 +88,24 @@ update msg model =
                 , Cmd.map LeaderBoardMsg cmd
                 )
 
+        RunnerMsg msg ->
+            let
+                ( runnerModel, cmd ) =
+                    Runner.update msg model.runner
+            in
+                ( { model | runner = runnerModel }
+                , Cmd.map RunnerMsg cmd
+                )
+
+        LoginMsg msg ->
+            let
+                ( loginModel, cmd ) =
+                    Login.update msg model.login
+            in
+                ( { model | login = loginModel }
+                , Cmd.map LoginMsg cmd
+                )
+
 
 
 -- view
@@ -84,6 +119,14 @@ view model =
                 LeaderBoardPage ->
                     Html.map LeaderBoardMsg
                         (LeaderBoard.view model.leaderBoard)
+
+                RunnerPage ->
+                    Html.map RunnerMsg
+                        (Runner.view model.runner)
+
+                LoginPage ->
+                    Html.map LoginMsg
+                        (Login.view model.login)
 
                 NotFound ->
                     div [ class "main" ]
@@ -100,15 +143,15 @@ view model =
 pageHeader : Model -> Html Msg
 pageHeader model =
     header []
-        [ a [onClick (Navigate LeaderBoardPage)] [ text "Race Results" ]
+        [ a [ onClick (Navigate LeaderBoardPage) ] [ text "Race Results" ]
         , ul []
             [ li []
-                [ a [ href "#" ] [ text "Link" ]
+                [ a [ onClick (Navigate RunnerPage) ] [ text "Runners" ]
                 ]
             ]
         , ul []
             [ li []
-                [ a [ href "#" ] [ text "Login" ]
+                [ a [ onClick (Navigate LoginPage) ] [ text "Login" ]
                 ]
             ]
         ]
@@ -123,9 +166,17 @@ subscriptions model =
     let
         leaderBoardSub =
             LeaderBoard.subscriptions model.leaderBoard
+
+        runnerSub =
+            Runner.subscriptions model.runner
+
+        loginSub =
+            Login.subscriptions model.login
     in
         Sub.batch
             [ Sub.map LeaderBoardMsg leaderBoardSub
+            , Sub.map RunnerMsg runnerSub
+            , Sub.map LoginMsg loginSub
             ]
 
 
@@ -138,6 +189,12 @@ hashToPage hash =
         "" ->
             LeaderBoardPage
 
+        "#/runner" ->
+            RunnerPage
+
+        "#/login" ->
+            LoginPage
+
         _ ->
             NotFound
 
@@ -147,6 +204,12 @@ pageToHash page =
     case page of
         LeaderBoardPage ->
             "#/"
+
+        RunnerPage ->
+            "#/runner"
+
+        LoginPage ->
+            "#/login"
 
         NotFound ->
             "#notfound"
